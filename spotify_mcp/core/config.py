@@ -24,7 +24,7 @@ class Settings(BaseSettings):
 
     # Server Configuration
     server_host: str = Field(default="0.0.0.0", description="Server host")
-    server_port: int = Field(default=8001, description="Server port")
+    server_port: int = Field(default=8214, description="Server port")
     server_url: str = Field(
         default="http://localhost:8001", 
         description="This server's URL for resource validation"
