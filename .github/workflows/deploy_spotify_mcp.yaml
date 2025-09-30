@@ -380,19 +380,10 @@ jobs:
               netstat -tlnp | grep :8214 || echo "No process listening on port 8214"
             fi
             
-            # Check nginx proxy
-            if [ "${{ steps.vars.outputs.DOMAIN_NAME }}" != "" ]; then
-              echo -e "\nNginx Proxy Health Check:"
-              curl -f http://localhost/health 2>/dev/null && echo "✅ Nginx proxy is working" || echo "❌ Nginx proxy is not working"
-            fi
-            
             # Show recent logs
             echo -e "\nRecent MCP Server Logs:"
             sudo journalctl -u spotify-mcp.service --no-pager -n 10
-            
-            # Show listening ports
-            echo -e "\nListening Ports:"
-            sudo netstat -tlnp | grep -E ":(80|443|8214)\s"
+
           ENDSSH
 
       - name: Cleanup
