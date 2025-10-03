@@ -1,6 +1,6 @@
 """MCP tools for music analysis operations."""
 
-from typing import List
+from typing import List, Optional
 import json
 import logging
 
@@ -10,7 +10,7 @@ from mcp.server.fastmcp.server import Context
 
 from ..services import SpotifyService
 from ..models import DataFormat, SpotifyObjectType
-from ..dependencies import get_access_token, get_spotify_service
+from ..dependencies import get_access_token, get_spotify_service, parse_comma_separated_list
 
 
 logger = logging.getLogger(__name__)
@@ -26,13 +26,13 @@ def register_analysis_tools(mcp: FastMCP):
     @mcp.tool()
     async def spotify_get_track_audio_features(
         ctx: Context,
-        track_ids: List[str]
+        track_ids: str
     ) -> str:
         """Get audio features for one or more tracks.
 
         Args:
             ctx: MCP context
-            track_ids: List of Spotify track IDs (max 100)
+            track_ids: Comma-separated string of Spotify track IDs (max 100)
 
         Returns:
             JSON string with audio features
@@ -40,10 +40,15 @@ def register_analysis_tools(mcp: FastMCP):
         try:
             service = get_spotify_service(get_access_token(ctx))
             
-            if len(track_ids) > 100:
+            # Parse comma-separated track IDs string into list
+            track_ids_list = parse_comma_separated_list(track_ids)
+            if not track_ids_list:
+                raise ValueError("At least one track ID is required")
+            
+            if len(track_ids_list) > 100:
                 raise ValueError("Maximum 100 track IDs allowed per request")
             
-            result = await service.get_track_audio_features(track_ids)
+            result = await service.get_track_audio_features(track_ids_list)
             
             # Convert to dict format for JSON serialization
             features_data = [features.model_dump() for features in result]
@@ -86,14 +91,14 @@ def register_analysis_tools(mcp: FastMCP):
     @mcp.tool()
     async def spotify_get_artist_info(
         ctx: Context,
-        artist_ids: List[str],
+        artist_ids: str,
         format: str = "compact"
     ) -> str:
         """Get detailed information about one or more artists.
 
         Args:
             ctx: MCP context
-            artist_ids: List of Spotify artist IDs (max 50)
+            artist_ids: Comma-separated string of Spotify artist IDs (max 50)
             format: Response format (minimal, compact, full, raw)
 
         Returns:
@@ -102,13 +107,18 @@ def register_analysis_tools(mcp: FastMCP):
         try:
             service = get_spotify_service(get_access_token(ctx))
             
-            if len(artist_ids) > 50:
+            # Parse comma-separated artist IDs string into list
+            artist_ids_list = parse_comma_separated_list(artist_ids)
+            if not artist_ids_list:
+                raise ValueError("At least one artist ID is required")
+            
+            if len(artist_ids_list) > 50:
                 raise ValueError("Maximum 50 artist IDs allowed per request")
             
             data_format = DataFormat(format.lower())
             
             # Use Spotipy directly
-            results = await service.get_artists(artist_ids)
+            results = await service.get_artists(artist_ids_list)
             
             if data_format == DataFormat.RAW:
                 return json.dumps(results, indent=2, default=str)
@@ -168,7 +178,7 @@ def register_analysis_tools(mcp: FastMCP):
     async def spotify_get_artist_albums(
         ctx: Context,
         artist_id: str,
-        include_groups: List[str] = None,
+        include_groups: Optional[str] = None,
         market: str = "US",
         limit: int = 20,
         offset: int = 0,
@@ -179,7 +189,7 @@ def register_analysis_tools(mcp: FastMCP):
         Args:
             ctx: MCP context
             artist_id: Spotify artist ID
-            include_groups: List of album types to include (album, single, appears_on, compilation)
+            include_groups: Comma-separated string of album types to include (album, single, appears_on, compilation)
             market: Market/country code for results
             limit: Maximum number of albums to return (1-50)
             offset: Offset for pagination
@@ -192,9 +202,10 @@ def register_analysis_tools(mcp: FastMCP):
             service = get_spotify_service(get_access_token(ctx))
             data_format = DataFormat(format.lower())
             
-            # Default include groups
-            if include_groups is None:
-                include_groups = ["album", "single"]
+            # Parse comma-separated include groups string into list
+            include_groups_list = parse_comma_separated_list(include_groups)
+            if not include_groups_list:
+                include_groups_list = ["album", "single"]
             
             # Get artist albums
             results = await service.get_artist_albums(
@@ -203,7 +214,7 @@ def register_analysis_tools(mcp: FastMCP):
                 country=market,
                 limit=limit,
                 offset=offset,
-                include_groups=",".join(include_groups)
+                include_groups=",".join(include_groups_list)
             )
             
             if data_format == DataFormat.RAW:

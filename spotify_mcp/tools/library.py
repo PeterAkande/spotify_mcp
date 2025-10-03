@@ -10,7 +10,7 @@ from mcp.server.fastmcp.server import Context
 
 from ..services import SpotifyService
 from ..models import DataFormat, TimeRange
-from ..dependencies import get_access_token, get_spotify_service
+from ..dependencies import get_access_token, get_spotify_service, parse_comma_separated_list
 
 
 logger = logging.getLogger(__name__)
@@ -264,13 +264,13 @@ def register_library_tools(mcp: FastMCP):
     @mcp.tool()
     async def spotify_save_tracks(
         ctx: Context,
-        track_ids: list[str]
+        track_ids: str
     ) -> str:
         """Save tracks to user's library.
 
         Args:
             ctx: MCP context
-            track_ids: List of Spotify track IDs to save (max 50)
+            track_ids: Comma-separated string of Spotify track IDs to save (max 50)
 
         Returns:
             JSON string with operation result
@@ -278,16 +278,21 @@ def register_library_tools(mcp: FastMCP):
         try:
             service = get_spotify_service(get_access_token(ctx))
             
-            if len(track_ids) > 50:
+            # Parse comma-separated track IDs string into list
+            track_ids_list = parse_comma_separated_list(track_ids)
+            if not track_ids_list:
+                raise ValueError("At least one track ID is required")
+            
+            if len(track_ids_list) > 50:
                 raise ValueError("Maximum 50 track IDs allowed per request")
             
             # Save tracks to user's library
-            await service.save_tracks(track_ids)
+            await service.save_tracks(track_ids_list)
             
             result = {
                 "success": True,
-                "message": f"Successfully saved {len(track_ids)} tracks",
-                "track_ids": track_ids
+                "message": f"Successfully saved {len(track_ids_list)} tracks",
+                "track_ids": track_ids_list
             }
             
             return json.dumps(result, indent=2)
@@ -302,13 +307,13 @@ def register_library_tools(mcp: FastMCP):
     @mcp.tool()
     async def spotify_remove_saved_tracks(
         ctx: Context,
-        track_ids: list[str]
+        track_ids: str
     ) -> str:
         """Remove tracks from user's saved library.
 
         Args:
             ctx: MCP context
-            track_ids: List of Spotify track IDs to remove (max 50)
+            track_ids: Comma-separated string of Spotify track IDs to remove (max 50)
 
         Returns:
             JSON string with operation result
@@ -316,16 +321,21 @@ def register_library_tools(mcp: FastMCP):
         try:
             service = get_spotify_service(get_access_token(ctx))
             
-            if len(track_ids) > 50:
+            # Parse comma-separated track IDs string into list
+            track_ids_list = parse_comma_separated_list(track_ids)
+            if not track_ids_list:
+                raise ValueError("At least one track ID is required")
+            
+            if len(track_ids_list) > 50:
                 raise ValueError("Maximum 50 track IDs allowed per request")
             
             # Remove tracks from user's library
-            await service.remove_saved_tracks(track_ids)
+            await service.remove_saved_tracks(track_ids_list)
             
             result = {
                 "success": True,
-                "message": f"Successfully removed {len(track_ids)} tracks from library",
-                "track_ids": track_ids
+                "message": f"Successfully removed {len(track_ids_list)} tracks from library",
+                "track_ids": track_ids_list
             }
             
             return json.dumps(result, indent=2)
@@ -340,13 +350,13 @@ def register_library_tools(mcp: FastMCP):
     @mcp.tool()
     async def spotify_follow_artists(
         ctx: Context,
-        artist_ids: list[str]
+        artist_ids: str
     ) -> str:
         """Follow artists on Spotify.
 
         Args:
             ctx: MCP context
-            artist_ids: List of Spotify artist IDs to follow (max 50)
+            artist_ids: Comma-separated string of Spotify artist IDs to follow (max 50)
 
         Returns:
             JSON string with operation result
@@ -354,16 +364,21 @@ def register_library_tools(mcp: FastMCP):
         try:
             service = get_spotify_service(get_access_token(ctx))
             
-            if len(artist_ids) > 50:
+            # Parse comma-separated artist IDs string into list
+            artist_ids_list = parse_comma_separated_list(artist_ids)
+            if not artist_ids_list:
+                raise ValueError("At least one artist ID is required")
+            
+            if len(artist_ids_list) > 50:
                 raise ValueError("Maximum 50 artist IDs allowed per request")
             
             # Follow artists
-            await service.follow_artists(artist_ids)
+            await service.follow_artists(artist_ids_list)
             
             result = {
                 "success": True,
-                "message": f"Successfully followed {len(artist_ids)} artists",
-                "artist_ids": artist_ids
+                "message": f"Successfully followed {len(artist_ids_list)} artists",
+                "artist_ids": artist_ids_list
             }
             
             return json.dumps(result, indent=2)

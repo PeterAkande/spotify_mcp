@@ -10,7 +10,7 @@ from mcp.server.fastmcp.server import Context
 
 from ..services import SpotifyService
 from ..models import RepeatState
-from ..dependencies import get_access_token, get_spotify_service
+from ..dependencies import get_access_token, get_spotify_service, parse_comma_separated_list
 
 
 logger = logging.getLogger(__name__)
@@ -27,14 +27,14 @@ def register_playback_tools(mcp: FastMCP):
     async def spotify_get_current_playback(
         ctx: Context,
         market: str = "US",
-        additional_types: Optional[List[str]] = None
+        additional_types: Optional[str] = None
     ) -> str:
         """Get information about current playback state.
 
         Args:
             ctx: MCP context
             market: Market/country code for track availability
-            additional_types: Additional content types to include (episode, track)
+            additional_types: Comma-separated string of additional content types to include (episode, track)
 
         Returns:
             JSON string with current playback information
@@ -85,7 +85,7 @@ def register_playback_tools(mcp: FastMCP):
         ctx: Context,
         device_id: Optional[str] = None,
         context_uri: Optional[str] = None,
-        uris: Optional[List[str]] = None,
+        uris: Optional[str] = None,
         offset_position: Optional[int] = None,
         offset_uri: Optional[str] = None,
         position_ms: Optional[int] = None
@@ -96,7 +96,7 @@ def register_playback_tools(mcp: FastMCP):
             ctx: MCP context
             device_id: Device ID to start playback on (uses active device if None)
             context_uri: Spotify URI of context (album, artist, playlist)
-            uris: List of Spotify track URIs to play
+            uris: Comma-separated string of Spotify track URIs to play
             offset_position: Position in context to start playback (0-indexed)
             offset_uri: URI of track to start playback from
             position_ms: Position in milliseconds to start playback
@@ -114,7 +114,9 @@ def register_playback_tools(mcp: FastMCP):
             if context_uri:
                 kwargs["context_uri"] = context_uri
             if uris:
-                kwargs["uris"] = uris
+                uris_list = parse_comma_separated_list(uris)
+                if uris_list:
+                    kwargs["uris"] = uris_list
             if position_ms:
                 kwargs["position_ms"] = position_ms
             
@@ -389,14 +391,14 @@ def register_playback_tools(mcp: FastMCP):
     @mcp.tool()
     async def spotify_transfer_playback(
         ctx: Context,
-        device_ids: List[str],
+        device_ids: str,
         play: bool = False
     ) -> str:
         """Transfer playback to different device(s).
 
         Args:
             ctx: MCP context
-            device_ids: List of device IDs to transfer playback to
+            device_ids: Comma-separated string of device IDs to transfer playback to
             play: Whether to start playing after transfer (default: False)
 
         Returns:
@@ -405,16 +407,18 @@ def register_playback_tools(mcp: FastMCP):
         try:
             service = get_spotify_service(get_access_token(ctx))
             
-            if not device_ids:
-                raise ValueError("At least one device ID must be provided")
+            # Parse comma-separated device IDs string into list
+            device_ids_list = parse_comma_separated_list(device_ids)
+            if not device_ids_list:
+                raise ValueError("At least one device ID is required")
             
             # Use Spotipy directly
-            await service.transfer_playback(device_ids, force_play=play)
+            await service.transfer_playback(device_ids_list, force_play=play)
             
             response = {
                 "success": True,
-                "message": f"Playback transferred to {len(device_ids)} device(s)",
-                "device_ids": device_ids,
+                "message": f"Playbook transferred to {len(device_ids_list)} device(s)",
+                "device_ids": device_ids_list,
                 "force_play": play
             }
             

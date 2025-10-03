@@ -14,7 +14,7 @@ from ..models import (
     DataFormat,
     SpotifyObjectType,
 )
-from ..dependencies import get_access_token, get_spotify_service
+from ..dependencies import get_access_token, get_spotify_service, parse_comma_separated_list
 
 
 logger = logging.getLogger(__name__)
@@ -31,7 +31,7 @@ def register_search_tools(mcp: FastMCP):
     async def spotify_search_music(
         ctx: Context,
         query: str,
-        types: Optional[List[str]] = None,
+        types: Optional[str] = None,
         market: str = "US",
         limit: int = 20,
         offset: int = 0,
@@ -42,7 +42,7 @@ def register_search_tools(mcp: FastMCP):
         Args:
             ctx: MCP context
             query: Search query string
-            types: List of object types to search (track, artist, album, playlist, show, episode)
+            types: Comma-separated string of object types to search (track, artist, album, playlist, show, episode)
             market: Market/country code for results (e.g., "US", "GB", "DE")
             limit: Maximum number of results per type (1-50)
             offset: Offset for pagination
@@ -56,11 +56,13 @@ def register_search_tools(mcp: FastMCP):
 
             # Validate and convert parameters
             data_format = DataFormat(format.lower())
-            search_types = (
-                [SpotifyObjectType(t.lower()) for t in types]
-                if types
-                else [SpotifyObjectType.TRACK]
-            )
+            
+            # Parse comma-separated types string into list
+            types_list = parse_comma_separated_list(types)
+            if types_list:
+                search_types = [SpotifyObjectType(t.lower()) for t in types_list]
+            else:
+                search_types = [SpotifyObjectType.TRACK]
 
             request = SearchRequest(
                 query=query,
