@@ -1,11 +1,27 @@
 """Dependency injection functions for MCP tools."""
 
+from typing import Optional, List
 from fastapi import HTTPException, Depends
 from mcp.server.fastmcp.server import Context
 from starlette.requests import Request
 
 from .auth import SpotifyTokenInfo, extract_bearer_token, spotify_token_validator
 from .services import SpotifyService
+
+
+def parse_comma_separated_list(value: Optional[str]) -> Optional[List[str]]:
+    """Parse comma-separated string into a list of strings.
+    
+    Args:
+        value: Comma-separated string or None
+        
+    Returns:
+        List of strings or None
+    """
+    if value is None or value.strip() == "":
+        return None
+    # Split by comma and strip whitespace from each item
+    return [item.strip() for item in value.split(',') if item.strip()]
 
 
 def get_access_token(ctx: Context) -> str:

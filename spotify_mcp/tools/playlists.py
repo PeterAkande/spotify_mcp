@@ -10,7 +10,7 @@ from mcp.server.fastmcp.server import Context
 
 from ..services import SpotifyService
 from ..models import PlaylistCreateRequest, DataFormat
-from ..dependencies import get_access_token, get_spotify_service
+from ..dependencies import get_access_token, get_spotify_service, parse_comma_separated_list
 
 
 logger = logging.getLogger(__name__)
@@ -208,7 +208,7 @@ def register_playlist_tools(mcp: FastMCP):
     async def spotify_add_tracks_to_playlist(
         ctx: Context,
         playlist_id: str,
-        track_uris: List[str],
+        track_uris: str,
         position: Optional[int] = None
     ) -> str:
         """Add tracks to a playlist.
@@ -216,7 +216,7 @@ def register_playlist_tools(mcp: FastMCP):
         Args:
             ctx: MCP context
             playlist_id: Spotify playlist ID
-            track_uris: List of Spotify track URIs to add (max 100)
+            track_uris: Comma-separated string of Spotify track URIs to add (max 100)
             position: Position to insert tracks (default: end of playlist)
 
         Returns:
@@ -225,21 +225,26 @@ def register_playlist_tools(mcp: FastMCP):
         try:
             service = get_spotify_service(get_access_token(ctx))
             
-            if len(track_uris) > 100:
+            # Parse comma-separated track URIs string into list
+            track_uris_list = parse_comma_separated_list(track_uris)
+            if not track_uris_list:
+                raise ValueError("At least one track URI is required")
+            
+            if len(track_uris_list) > 100:
                 raise ValueError("Maximum 100 track URIs allowed per request")
             
             # Add tracks to playlist
             result = await service.add_tracks_to_playlist(
                 playlist_id=playlist_id,
-                items=track_uris,
+                items=track_uris_list,
                 position=position
             )
             
             response = {
                 "success": True,
-                "message": f"Successfully added {len(track_uris)} tracks to playlist",
+                "message": f"Successfully added {len(track_uris_list)} tracks to playlist",
                 "snapshot_id": result["snapshot_id"],
-                "track_uris": track_uris
+                "track_uris": track_uris_list
             }
             
             return json.dumps(response, indent=2)
@@ -255,7 +260,7 @@ def register_playlist_tools(mcp: FastMCP):
     async def spotify_remove_tracks_from_playlist(
         ctx: Context,
         playlist_id: str,
-        track_uris: List[str],
+        track_uris: str,
         snapshot_id: Optional[str] = None
     ) -> str:
         """Remove tracks from a playlist.
@@ -263,7 +268,7 @@ def register_playlist_tools(mcp: FastMCP):
         Args:
             ctx: MCP context
             playlist_id: Spotify playlist ID
-            track_uris: List of Spotify track URIs to remove
+            track_uris: Comma-separated string of Spotify track URIs to remove
             snapshot_id: Playlist snapshot ID for optimistic locking
 
         Returns:
@@ -272,18 +277,23 @@ def register_playlist_tools(mcp: FastMCP):
         try:
             service = get_spotify_service(get_access_token(ctx))
             
+            # Parse comma-separated track URIs string into list
+            track_uris_list = parse_comma_separated_list(track_uris)
+            if not track_uris_list:
+                raise ValueError("At least one track URI is required")
+            
             # Remove tracks from playlist
             result = await service.remove_tracks_from_playlist(
                 playlist_id=playlist_id,
-                items=track_uris,
+                items=track_uris_list,
                 snapshot_id=snapshot_id
             )
             
             response = {
                 "success": True,
-                "message": f"Successfully removed {len(track_uris)} tracks from playlist",
+                "message": f"Successfully removed {len(track_uris_list)} tracks from playlist",
                 "snapshot_id": result["snapshot_id"],
-                "track_uris": track_uris
+                "track_uris": track_uris_list
             }
             
             return json.dumps(response, indent=2)
